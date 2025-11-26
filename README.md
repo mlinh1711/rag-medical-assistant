@@ -101,7 +101,7 @@ Install Ollama:
 Pull the Llama 3.2 model:
 
 ```bash
-ollama pull llama3.2
+ollama pull llama3.2:1b
 ```
 
 ---
@@ -132,7 +132,7 @@ http://localhost:8000/docs
 
 ```bash
 .\my_env\Scripts\activate
-streamlit run app.py
+streamlit run streamlit_app.py
 ```
 
 Frontend UI opens at:
