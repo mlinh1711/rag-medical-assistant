@@ -13,3 +13,5 @@ tqdm
 requests
 sentence-transformers
 pytest
+streamlit
+requests
