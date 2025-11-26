@@ -98,7 +98,7 @@ pip install -r requirements.txt
 Install Ollama:
 [https://ollama.com/download](https://ollama.com/download)
 
-Pull the Llama 3.2 model:
+Pull the Llama 3.2 mini model:
 
 ```bash
 ollama pull llama3.2:1b
@@ -132,7 +132,7 @@ http://localhost:8000/docs
 
 ```bash
 .\my_env\Scripts\activate
-streamlit run streamlit_app.py
+streamlit run .\frondend\streamlit_app.py
 ```
 
 Frontend UI opens at:
