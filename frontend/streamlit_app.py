@@ -545,7 +545,7 @@ if question:
             st.session_state.query_count += 1
             st.session_state.total_latency += result.get("latency_ms", 0)
             add_to_history(question, result["answer"])
-        st.experimental_rerun()
+        st.rerun()
 
 # ===========================
 # Footer
