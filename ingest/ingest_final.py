@@ -3,7 +3,7 @@ from typing import List
 
 from langchain_community.document_loaders import DirectoryLoader, PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_voyageai import VoyageAIEmbeddings
 from langchain_community.vectorstores import Chroma
 
 
@@ -42,7 +42,7 @@ def load_documents(docs_path: str = DOCS_PATH):
 
 def split_documents(documents, chunk_size: int = 1000, chunk_overlap: int = 200):
     """Split documents into smaller chunks with overlap."""
-    print("\n Splitting documents into chunks...")
+    print("\nSplitting documents into chunks...")
 
     text_splitter = RecursiveCharacterTextSplitter(
         chunk_size=chunk_size,
@@ -50,7 +50,7 @@ def split_documents(documents, chunk_size: int = 1000, chunk_overlap: int = 200)
     )
 
     chunks = text_splitter.split_documents(documents)
-    print(f" Created {len(chunks)} chunks.")
+    print(f"Created {len(chunks)} chunks.")
 
     for i, chunk in enumerate(chunks[:5]):
         print(f"\n--- Chunk {i+1} ---")
@@ -66,13 +66,12 @@ def split_documents(documents, chunk_size: int = 1000, chunk_overlap: int = 200)
 
 
 def create_vector_store(chunks, persist_directory: str = DB_PATH):
-    """Create and persist Chroma vector store using FREE HuggingFace embeddings."""
-    print("\n Creating embeddings and storing in ChromaDB...")
+    """Create and persist Chroma vector store using VoyageAI embeddings."""
+    print("\nCreating embeddings and storing in ChromaDB...")
 
-    embedding_model = HuggingFaceEmbeddings(
-        model_name="BAAI/bge-small-en-v1.5",
-        model_kwargs={"device": "cpu"},
-        encode_kwargs={"normalize_embeddings": True, "batch_size": 32},
+    # VoyageAIEmbeddings sẽ tự dùng VOYAGE_API_KEY từ environment
+    embedding_model = VoyageAIEmbeddings(
+        model="voyage-3-lite",  # model nhẹ, hợp lý cho free tier
     )
 
     vectorstore = Chroma.from_documents(
@@ -82,7 +81,7 @@ def create_vector_store(chunks, persist_directory: str = DB_PATH):
         collection_metadata={"hnsw:space": "cosine"},
     )
 
-    print(f" Vector store created and saved to {persist_directory}")
+    print(f"Vector store created and saved to {persist_directory}")
     return vectorstore
 
 
@@ -92,18 +91,18 @@ def main(docs_path: str = DOCS_PATH, persist_directory: str = DB_PATH):
 
     # Nếu DB đã tồn tại thì load luôn, không ingest lại
     if os.path.exists(persist_directory) and os.listdir(persist_directory):
-        print(" Vector store already exists. Loading existing store...")
-        embedding_model = HuggingFaceEmbeddings(
-            model_name="BAAI/bge-small-en-v1.5",
-            model_kwargs={"device": "cpu"},
-            encode_kwargs={"normalize_embeddings": True, "batch_size": 32},
+        print("Vector store already exists. Loading existing store...")
+
+        embedding_model = VoyageAIEmbeddings(
+            model="voyage-3-lite",
         )
+
         vectorstore = Chroma(
             persist_directory=persist_directory,
             embedding_function=embedding_model,
             collection_metadata={"hnsw:space": "cosine"},
         )
-        print(" Loaded existing vector store.")
+        print("Loaded existing vector store.")
         return vectorstore
 
     print("No existing vector store. Building from raw PDFs...\n")
@@ -112,7 +111,7 @@ def main(docs_path: str = DOCS_PATH, persist_directory: str = DB_PATH):
     chunks = split_documents(documents)
     vectorstore = create_vector_store(chunks, persist_directory)
 
-    print("\n🎉 Ingestion complete! Your documents are now ready for RAG queries.")
+    print("\n Ingestion complete! Your documents are now ready for RAG queries.")
     return vectorstore
 
 

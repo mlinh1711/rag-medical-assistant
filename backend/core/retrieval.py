@@ -2,16 +2,14 @@ import os
 from typing import Any, List, Tuple
 
 from langchain_chroma import Chroma
-from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_voyageai import VoyageAIEmbeddings
 
 
 DB_PATH = "db/chroma_db"
 
-# Embedding model miễn phí, chạy trên CPU
-embedding_model = HuggingFaceEmbeddings(
-    model_name="BAAI/bge-small-en-v1.5",
-    model_kwargs={"device": "cpu"},
-    encode_kwargs={"normalize_embeddings": True, "batch_size": 32},
+# Embedding model VoyageAI, chạy qua API (free tier vẫn dùng được)
+embedding_model = VoyageAIEmbeddings(
+    model="voyage-3-lite",
 )
 
 

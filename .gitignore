@@ -1,7 +1,16 @@
-.venv/
+# Python cache
 __pycache__/
 *.pyc
-.env
-data/processed/
-data/vectorstore/
-venv/
+
+# Jupyter notebook checkpoints
+.ipynb_checkpoints/
+
+# Virtual env
+.venv/
+env/
+
+# Local databases / vector stores
+db/
+
+# OS files
+.DS_Store

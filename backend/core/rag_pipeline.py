@@ -58,14 +58,19 @@ def call_ollama_with_context(question: str, context: str) -> str:
     url = f"{OLLAMA_BASE_URL}/api/generate"
 
     prompt = (
-        "You are a medical information assistant. "
-        "Answer ONLY based on the provided context. "
-        "If the context does not contain enough information, say you do not know. "
-        "Always remind that your answer is general information and not a substitute "
-        "for professional medical advice.\n\n"
+        "You are a medical information assistant.\n"
+        "Answer ONLY based on the provided context below.\n"
+        "If the context does not contain enough information, say clearly that you do not know.\n"
+        "Your answer is for general information only and is NOT a substitute for professional medical advice.\n\n"
+        "Answering style:\n"
+        "- Write for a non-medical person (patients, caregivers).\n"
+        "- Start with a direct, practical answer in 1–2 sentences.\n"
+        "- Overall length: at most 3–4 sentences or about 80 words.\n"
+        "- Do NOT copy long passages or tables from the context. Summarise in your own words.\n"
+        "- If doses or numbers are relevant, mention the key ones clearly.\n\n"
         f"Context:\n{context}\n\n"
         f"Question: {question}\n\n"
-        "Answer clearly and concisely."
+        "Now provide the answer."
     )
 
     payload = {
@@ -78,7 +83,7 @@ def call_ollama_with_context(question: str, context: str) -> str:
 
     try:
         resp.raise_for_status()
-    except requests.HTTPError as e:
+    except requests.HTTPError:
         print("Ollama error status:", resp.status_code)
         print("Ollama response:", resp.text)
         raise
@@ -88,7 +93,10 @@ def call_ollama_with_context(question: str, context: str) -> str:
     # Với stream=False, Ollama trả về field "response"
     answer = data.get("response", "").strip()
     if not answer:
-        answer = "Sorry, the answer can not be generated from Ollama model right now."
+        answer = (
+            "Sorry, the answer can not be generated from the Ollama model right now. "
+            "Please try again later or consult a healthcare professional."
+        )
 
     return answer
 
@@ -111,8 +119,9 @@ def run_rag(
 
     if not docs:
         answer = (
-            "Sorry, I couldn't find enough relevant information in the documents to answer this question accurately."
-            "You should consult a doctor or healthcare professional."
+            "Sorry, I couldn't find enough relevant information in the documents to "
+            "answer this question accurately. You should consult a doctor or "
+            "healthcare professional."
         )
         return answer, []
 

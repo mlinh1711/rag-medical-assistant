@@ -21,14 +21,70 @@ TEST_QUERIES: List[str] = [
     "How to treat severe dehydration in children?",
 ]
 
-# Ground truth đơn giản dùng keyword (bạn có thể bổ sung dần)
-# Key = question string y như trong TEST_QUERIES
-# Value = list keyword cần xuất hiện trong doc đúng
+# Ground truth rất đơn giản: chỉ là vài keyword đặc trưng/định nghĩa
+# Nếu bất kỳ keyword nào xuất hiện trong doc → tính là "hit" cho câu đó
 GROUND_TRUTHS: Dict[str, List[str]] = {
-    # Ví dụ (tự thêm sau):
-    # "What is the recommended adult dose of paracetamol?": [
-    #     "500 mg", "3 to 4 times", "adult"
-    # ],
+    "What is the recommended adult dose of paracetamol?": [
+        "adult",
+        "500 mg",
+        "3 to 4 times",
+    ],
+    "Which conditions require caution when using paracetamol?": [
+        "hepatic impairment",
+        "renal impairment",
+        "chronic alcoholism",
+        "malnutrition",
+        "dehydration",
+    ],
+    "What are the main adverse effects of paracetamol?": [
+        "hepatic cytolysis",
+        "liver",
+        "hepatotoxicity",
+        "intoxication",
+    ],
+    "What is the recommended storage condition for injectable paracetamol?": [
+        "Storage",
+        "Below 25",
+        "25 °C",
+    ],
+    "How is oral rehydration salts (ORS) used for dehydration?": [
+        "oral rehydration salts",
+        "sachet",
+        "1 litre",
+        "clean water",
+        "dehydration",
+    ],
+    "When are NSAIDs contraindicated?": [
+        "allergy to NSAID",
+        "peptic ulcer",
+        "coagulation defects",
+        "severe renal",
+        "severe hepatic",
+        "asthma",
+    ],
+    "What is the therapeutic action of amoxicillin?": [
+        "penicillin antibacterial",
+        "broad spectrum",
+    ],
+    "What is the dosage of amoxicillin for children?": [
+        "Child",
+        "mg/kg",
+        "amoxicillin",
+    ],
+    "When should diazepam be avoided?": [
+        "avoid alcohol",
+        "Pregnancy",
+        "breast-feeding",
+        "passage through the placenta",
+        "passage through breast milk",
+    ],
+    "How to treat severe dehydration in children?": [
+        "severe dehydration",
+        "Treatment plan C",
+        "5 ml/kg",
+        "20 ml/kg",
+        "ORS",
+    ],
 }
 
 
@@ -68,7 +124,7 @@ def main():
         for rank, (doc, score) in enumerate(docs_scores, start=1):
             src = doc.metadata.get("source") or doc.metadata.get("doc_id")
             page = doc.metadata.get("page") or doc.metadata.get("page_label") or "N/A"
-            snippet = doc.page_content[:400].replace("\n", " ")
+            snippet = doc.page_content[:250].replace("\n", " ")
             print(f"\nRank {rank} | score={score:.4f}")
             print(f"Source: {src} | Page: {page}")
             print(snippet, "...")

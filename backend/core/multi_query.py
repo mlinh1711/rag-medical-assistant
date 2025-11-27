@@ -1,38 +1,14 @@
-import os
-import sys
+from typing import List, Optional
 
-sys.path.append("/kaggle/working/rag-medical-assistant")
-
-from langchain_community.vectorstores import Chroma
-from langchain_huggingface import HuggingFaceEmbeddings
+from backend.core.retrieval import get_vectorstore
 
 
-DB_PATH = "db/chroma_db"
-
-# Dùng chung embedding với retrieval
-embedding_model = HuggingFaceEmbeddings(
-    model_name="BAAI/bge-small-en-v1.5",
-    model_kwargs={"device": "cpu"},
-    encode_kwargs={"normalize_embeddings": True, "batch_size": 32},
-)
-
-
-def get_vectorstore():
-    if not os.path.exists(DB_PATH) or len(os.listdir(DB_PATH)) == 0:
-        raise RuntimeError(
-            f"Vector store not found in '{DB_PATH}'. "
-            "Run ingest/ingest_final.py first."
-        )
-
-    db = Chroma(
-        persist_directory=DB_PATH,
-        embedding_function=embedding_model,
-        collection_metadata={"hnsw:space": "cosine"},
-    )
-    return db
-
-
-def multi_query_retrieve(query, variations, k=5):
+def multi_query_retrieve(
+    query: str,
+    variations: List[str],
+    k: int = 5,
+    score_threshold: Optional[float] = None,
+):
     """
     Multi-query retrieval:
     - query: câu hỏi chính
@@ -40,7 +16,20 @@ def multi_query_retrieve(query, variations, k=5):
     - Trả về list Document đã loại trùng theo (source, page)
     """
     db = get_vectorstore()
-    retriever = db.as_retriever(search_kwargs={"k": k})
+
+    # Tạo retriever giống như trong retrieval.py
+    if score_threshold is None:
+        retriever = db.as_retriever(
+            search_kwargs={"k": k},
+        )
+    else:
+        retriever = db.as_retriever(
+            search_type="similarity_score_threshold",
+            search_kwargs={
+                "k": k,
+                "score_threshold": score_threshold,
+            },
+        )
 
     all_docs = []
 
@@ -56,8 +45,9 @@ def multi_query_retrieve(query, variations, k=5):
     # Deduplicate theo (source, page)
     unique = {}
     for d in all_docs:
-        source = d.metadata.get("source")
-        page = d.metadata.get("page")
+        metadata = d.metadata or {}
+        source = metadata.get("source") or metadata.get("doc_id")
+        page = metadata.get("page") or metadata.get("page_label")
         key = (source, page)
         if key not in unique:
             unique[key] = d
