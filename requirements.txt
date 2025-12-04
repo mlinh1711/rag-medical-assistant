@@ -1,17 +1,39 @@
-fastapi
-uvicorn[standard]
-python-dotenv
-pydantic>=2
-langchain
-langchain-community
-langchain-chroma
-langchain-huggingface
-pypdf
-pdfplumber
-python-docx
-tqdm
-requests
-sentence-transformers
-pytest
-streamlit
-requests
+# ---- Core Framework ----
+fastapi==0.110.1
+uvicorn[standard]==0.29.0
+python-dotenv==1.0.1
+pydantic==2.8.2
+
+# ---- LangChain Ecosystem ----
+langchain>=0.3.0,<0.5.0
+langchain-chroma>=0.1.4,<0.3.0
+langchain-voyageai>=0.2.0,<0.3.0
+
+# ---- Vector DB ----
+chromadb==0.4.13
+
+# ---- Embeddings / NLP ----
+sentence-transformers==2.2.2
+
+# ---- Document Parsing ----
+pypdf==4.1.0
+pdfplumber==0.10.3
+python-docx==1.1.0
+
+# ---- Utility ----
+tqdm==4.66.1
+requests==2.31.0
+
+# ---- Testing ----
+pytest==8.1.1
+
+# ---- Fix dependencies that caused errors ----
+numpy==1.26.4
+grpcio==1.62.2
+rpds-py==0.20.0
+jsonschema<5
+referencing<0.36
+zstandard==0.22.0
+
+# ---- Streamlit UI ----
+streamlit==1.33.0

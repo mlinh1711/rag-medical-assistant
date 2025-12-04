@@ -1,0 +1,13 @@
+====================================================
+ History-aware RAG – Test Script
+ Timestamp: 2025-12-01T19:47:24.235732
+====================================================
+
+---- Conversation history ----
+1. user: My child has a fever and the doctor recommended paracetamol.
+2. assistant: Paracetamol is commonly used to treat fever and mild to moderate pain.
+3. user: We already talked about the adult dosage.
+------------------------------
+
+Original question: What about the dosage?
+

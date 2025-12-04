@@ -4,18 +4,22 @@ from typing import Any, List, Tuple
 from langchain_chroma import Chroma
 from langchain_voyageai import VoyageAIEmbeddings
 
+# Quan trọng: phải import settings từ config
+from backend.core.config import settings
+
 
 DB_PATH = "db/chroma_db"
 
 # Embedding model VoyageAI, chạy qua API (free tier vẫn dùng được)
 embedding_model = VoyageAIEmbeddings(
     model="voyage-3-lite",
+    api_key=settings.voyage_api_key,   # đã truyền key đúng chuẩn
 )
 
 
 def get_vectorstore() -> Chroma:
     """
-    Load a persisted Chroma vector store from disk.
+    Load a persisted Chroma vector store từ disk.
     """
     # Kiểm tra thư mục DB có tồn tại và không rỗng
     if not os.path.exists(DB_PATH) or len(os.listdir(DB_PATH)) == 0:
@@ -36,20 +40,14 @@ def get_vectorstore() -> Chroma:
 def get_retriever(k: int = 5, score_threshold: float | None = None):
     """
     Return a LangChain retriever object.
-
-    If score_threshold is None: standard top-k search.
-    If score_threshold is not None: similarity_score_threshold search.
     """
-    # Lấy instance Chroma đang lưu trên đĩa
     db = get_vectorstore()
 
     if score_threshold is None:
-        # Chỉ lấy top-k gần nhất
         retriever = db.as_retriever(
             search_kwargs={"k": k},
         )
     else:
-        # Lọc theo ngưỡng similarity score
         retriever = db.as_retriever(
             search_type="similarity_score_threshold",
             search_kwargs={
@@ -62,9 +60,8 @@ def get_retriever(k: int = 5, score_threshold: float | None = None):
 
 def retrieve(query: str, k: int = 5, score_threshold: float | None = None):
     """
-    Convenience wrapper that returns only Documents for a given query.
+    Convenience wrapper lấy Documents cho query.
     """
-    # Gọi retriever theo cấu hình k và score_threshold
     retriever = get_retriever(k=k, score_threshold=score_threshold)
     docs = retriever.invoke(query)
     return docs
@@ -72,20 +69,18 @@ def retrieve(query: str, k: int = 5, score_threshold: float | None = None):
 
 def retrieve_with_scores(query: str, k: int = 5) -> List[Tuple[Any, float]]:
     """
-    Return (Document, score) pairs for a given query using Chroma directly.
+    Return (Document, score) pairs cho query.
     """
-    # Dùng trực tiếp similarity_search_with_score để xem thêm score
     db = get_vectorstore()
     docs_and_scores = db.similarity_search_with_score(query, k=k)
     return docs_and_scores
 
 
 if __name__ == "__main__":
-    # Ví dụ query test
+    # Test
     demo_query = "When should paracetamol be used?"
     print("Query:", demo_query)
 
-    # Test top-k retrieval (không có score)
     docs = retrieve(demo_query, k=5)
     print("\n--- Top-k retrieval ---")
     for i, doc in enumerate(docs, start=1):
@@ -95,7 +90,6 @@ if __name__ == "__main__":
         print(f"Source: {src} | Page: {page}")
         print(doc.page_content[:300], "...")
 
-    # Test retrieval kèm score
     docs_scores = retrieve_with_scores(demo_query, k=5)
     print("\n--- Retrieval with scores ---")
     for i, (doc, score) in enumerate(docs_scores, start=1):

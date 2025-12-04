@@ -1,97 +1,116 @@
 import os
 import requests
-from typing import List, Dict
+from typing import Literal
 
+from backend.core.config import settings
 
-# Cấu hình Ollama từ biến môi trường
+# Đọc provider từ env: "deepseek" hoặc "ollama"
+LLM_PROVIDER: Literal["deepseek", "ollama"] = os.getenv(
+    "LLM_PROVIDER", "deepseek"
+).lower()  # type: ignore
+
+# Cấu hình DeepSeek từ .env (qua pydantic Settings)
+DEEPSEEK_API_KEY = settings.deepseek_api_key
+DEEPSEEK_MODEL = settings.deepseek_model  # ví dụ: "deepseek-chat"
+DEEPSEEK_API_URL = "https://api.deepseek.com/v1/chat/completions"
+
+# Optional: Ollama nếu bạn muốn dùng song song
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2:1b")
 
 
-def _call_ollama_generate(prompt: str, timeout: int = 120) -> str:
+def build_prompt(question: str, context: str) -> str:
     """
-    Hàm tiện ích gọi Ollama /api/generate với prompt thô.
-    Các hàm khác (RAG, rewrite, v.v.) sẽ build prompt rồi gọi hàm này.
+    Prompt chung cho mọi LLM: siết chặt việc bám vào Context,
+    tránh trả lời linh tinh ngoài tài liệu.
     """
-    url = f"{OLLAMA_BASE_URL}/api/generate"
+    return (
+        "You are a careful medical assistant for a Retrieval Augmented Generation system.\n"
+        "Follow these rules strictly:\n"
+        "1. Use only the medical information inside the Context below. Do not use outside knowledge.\n"
+        "2. If the Context does not clearly contain the answer, reply exactly: "
+        "\"I do not know. Please consult a doctor for more information.\"\n"
+        "3. If the Question and the Context talk about different diseases, medicines, or topics, "
+        "you must also reply with the same sentence in rule 2.\n"
+        "4. Keep the answer short and clear, about 2 to 5 sentences.\n"
+        "5. Answer in the same language as the Question.\n\n"
+        f"Context:\n{context}\n\n"
+        f"Question:\n{question}\n\n"
+        "Answer:"
+    )
 
-    payload = {
-        "model": OLLAMA_MODEL,
-        "prompt": prompt,
-        "stream": False,
+
+def call_deepseek_with_context(question: str, context: str) -> str:
+    if not DEEPSEEK_API_KEY:
+        raise ValueError("DEEPSEEK_API_KEY is empty. Check your .env file.")
+
+    prompt = build_prompt(question, context)
+
+    headers = {
+        # Quan trọng: phải có "Bearer "
+        "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
+        "Content-Type": "application/json",
     }
 
-    resp = requests.post(url, json=payload, timeout=timeout)
+    payload = {
+        "model": DEEPSEEK_MODEL,
+        "messages": [
+            {"role": "system", "content": "You are a helpful medical assistant."},
+            {"role": "user", "content": prompt},
+        ],
+        "temperature": 0.2,
+    }
+
+    resp = requests.post(DEEPSEEK_API_URL, headers=headers, json=payload, timeout=60)
 
     try:
         resp.raise_for_status()
-    except requests.HTTPError:
-        print("Ollama error status:", resp.status_code)
-        print("Ollama response:", resp.text)
-        raise
+    except requests.HTTPError as e:
+        # In nội dung lỗi thật để debug
+        print("DeepSeek error:", resp.text)
+        raise e
 
     data = resp.json()
-    answer = data.get("response", "").strip()
-    if not answer:
-        answer = (
-            "Sorry, the answer can not be generated from the LLM provider right now. "
-            "Please try again later or consult a healthcare professional."
-        )
-    return answer
+    return data["choices"][0]["message"]["content"].strip()
+
+
+def call_ollama_with_context(question: str, context: str) -> str:
+    """
+    Hàm gọi Ollama, nếu bạn vẫn muốn dùng local model.
+    """
+    prompt = build_prompt(question, context)
+
+    url = f"{OLLAMA_BASE_URL}/api/chat"
+    payload = {
+        "model": OLLAMA_MODEL,
+        "messages": [
+            {"role": "system", "content": "You are a helpful medical assistant."},
+            {"role": "user", "content": prompt},
+        ],
+        "stream": False,
+    }
+
+    resp = requests.post(url, json=payload, timeout=60)
+    resp.raise_for_status()
+    data = resp.json()
+
+    # Tùy theo format Ollama, chỉnh lại cho đúng
+    if "message" in data and "content" in data["message"]:
+        return data["message"]["content"].strip()
+
+    # Fallback
+    return str(data)
 
 
 def call_llm_with_context(question: str, context: str) -> str:
     """
-    Gọi LLM để trả lời câu hỏi y khoa dựa trên context (RAG).
-    Dùng chung cho RAG bình thường và history-aware RAG.
+    Hàm chung, RAG pipeline chỉ gọi hàm này.
     """
-    prompt = (
-        "You are a medical information assistant.\n"
-        "Answer ONLY based on the provided context below.\n"
-        "If the context does not contain enough information, say clearly that you do not know.\n"
-        "Your answer is for general information only and is NOT a substitute for professional medical advice.\n\n"
-        "Answering style:\n"
-        "- Write for a non-medical person (patients, caregivers).\n"
-        "- Start with a direct, practical answer in 1–2 sentences.\n"
-        "- Overall length: at most 3–4 sentences or about 80 words.\n"
-        "- Do NOT copy long passages or tables from the context. Summarise in your own words.\n"
-        "- If doses or numbers are relevant, mention the key ones clearly.\n\n"
-        f"Context:\n{context}\n\n"
-        f"Question: {question}\n\n"
-        "Now provide the answer."
-    )
+    provider = LLM_PROVIDER
 
-    return _call_ollama_generate(prompt)
-
-
-def call_llm_for_rewrite(history: List[Dict[str, str]], question: str) -> str:
-    """
-    Gọi LLM để rewrite câu hỏi mơ hồ thành câu hỏi đầy đủ, tự chứa.
-
-    history: list các message {"role": "user"/"assistant", "content": "..."}
-    question: câu hỏi mới nhất (có thể mơ hồ, ví dụ: "What about the dosage?")
-    """
-    # Chuyển history thành text để LLM nắm ngữ cảnh hội thoại
-    history_lines: List[str] = []
-    for msg in history:
-        role = msg.get("role", "user")
-        content = msg.get("content", "")
-        history_lines.append(f"{role}: {content}")
-    history_text = "\n".join(history_lines)
-
-    prompt = (
-        "You are helping to rewrite ambiguous medical questions into clear, "
-        "standalone questions.\n\n"
-        "Conversation history:\n"
-        f"{history_text}\n\n"
-        f"New user question: {question}\n\n"
-        "Task:\n"
-        "- Rewrite the new user question into a standalone, explicit medical question.\n"
-        "- Include key details from the history if needed (e.g. drug name, patient, route, etc.).\n"
-        "- The rewritten question must make sense on its own without the history.\n"
-        "- Answer ONLY with the rewritten question, nothing else.\n"
-    )
-
-    rewritten = _call_ollama_generate(prompt)
-    # Làm sạch kết quả (tránh trường hợp LLM thêm ngoặc kép hoặc tiền tố)
-    return rewritten.strip().strip('"').strip()
+    if provider == "deepseek":
+        return call_deepseek_with_context(question, context)
+    elif provider == "ollama":
+        return call_ollama_with_context(question, context)
+    else:
+        raise ValueError(f"Unsupported LLM_PROVIDER: {provider}")

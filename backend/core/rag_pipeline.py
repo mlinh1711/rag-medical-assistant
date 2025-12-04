@@ -1,13 +1,8 @@
 from typing import List, Dict, Any, Tuple
-import os
-import requests
 
 from backend.core.retrieval import retrieve
-
-
-# Cấu hình Ollama từ biến môi trường
-OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
-OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2:1b")
+from backend.core.llm_providers import call_llm_with_context
+from backend.core.multi_query import multi_query_retrieve
 
 
 def build_context_from_docs(docs) -> Tuple[str, List[Dict[str, Any]]]:
@@ -50,57 +45,6 @@ def build_context_from_docs(docs) -> Tuple[str, List[Dict[str, Any]]]:
     return context_text, sources
 
 
-def call_ollama_with_context(question: str, context: str) -> str:
-    """
-    Gọi Ollama qua /api/generate với prompt đầy đủ.
-    Dùng kiểu generate đơn giản, ổn định hơn /api/chat.
-    """
-    url = f"{OLLAMA_BASE_URL}/api/generate"
-
-    prompt = (
-        "You are a medical information assistant.\n"
-        "Answer ONLY based on the provided context below.\n"
-        "If the context does not contain enough information, say clearly that you do not know.\n"
-        "Your answer is for general information only and is NOT a substitute for professional medical advice.\n\n"
-        "Answering style:\n"
-        "- Write for a non-medical person (patients, caregivers).\n"
-        "- Start with a direct, practical answer in 1–2 sentences.\n"
-        "- Overall length: at most 3–4 sentences or about 80 words.\n"
-        "- Do NOT copy long passages or tables from the context. Summarise in your own words.\n"
-        "- If doses or numbers are relevant, mention the key ones clearly.\n\n"
-        f"Context:\n{context}\n\n"
-        f"Question: {question}\n\n"
-        "Now provide the answer."
-    )
-
-    payload = {
-        "model": OLLAMA_MODEL,
-        "prompt": prompt,
-        "stream": False,
-    }
-
-    resp = requests.post(url, json=payload, timeout=120)
-
-    try:
-        resp.raise_for_status()
-    except requests.HTTPError:
-        print("Ollama error status:", resp.status_code)
-        print("Ollama response:", resp.text)
-        raise
-
-    data = resp.json()
-
-    # Với stream=False, Ollama trả về field "response"
-    answer = data.get("response", "").strip()
-    if not answer:
-        answer = (
-            "Sorry, the answer can not be generated from the Ollama model right now. "
-            "Please try again later or consult a healthcare professional."
-        )
-
-    return answer
-
-
 def run_rag(
     question: str,
     top_k: int = 5,
@@ -108,13 +52,12 @@ def run_rag(
 ):
     """
     Pipeline RAG chính:
-    - Retrieve từ Chroma
+    - Retrieve từ vector store
     - Build context
-    - Gọi Ollama
+    - Gọi LLM qua call_llm_with_context
     - Trả answer + sources
     """
 
-    # Dùng score_threshold để lọc bớt đoạn không liên quan
     docs = retrieve(query=question, k=top_k, score_threshold=score_threshold)
 
     if not docs:
@@ -126,6 +69,39 @@ def run_rag(
         return answer, []
 
     context_text, sources = build_context_from_docs(docs)
-    answer = call_ollama_with_context(question, context_text)
+    answer = call_llm_with_context(question, context_text)
+
+    return answer, sources
+
+
+def run_rag_multi_query(
+    question: str,
+    variations: List[str],
+    top_k: int = 5,
+    score_threshold: float | None = 0.27,
+):
+    """
+    Phiên bản RAG dùng multi query:
+    - Nhận câu hỏi gốc và các biến thể (variations)
+    - Gọi multi_query_retrieve để lấy nhiều bộ docs
+    - Build context chung và gọi LLM
+    """
+    docs = multi_query_retrieve(
+        query=question,
+        variations=variations,
+        k=top_k,
+        score_threshold=score_threshold,
+    )
+
+    if not docs:
+        answer = (
+            "Sorry, I couldn't find enough relevant information in the documents to "
+            "answer this question accurately. You should consult a doctor or "
+            "healthcare professional."
+        )
+        return answer, []
+
+    context_text, sources = build_context_from_docs(docs)
+    answer = call_llm_with_context(question, context_text)
 
     return answer, sources

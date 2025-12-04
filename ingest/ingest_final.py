@@ -6,6 +6,9 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_voyageai import VoyageAIEmbeddings
 from langchain_community.vectorstores import Chroma
 
+# dùng chung config .env của backend
+from backend.core.config import settings
+
 
 DB_PATH = "db/chroma_db"
 DOCS_PATH = "data/raw"
@@ -21,7 +24,7 @@ def load_documents(docs_path: str = DOCS_PATH):
     loader = DirectoryLoader(
         path=docs_path,
         glob="*.pdf",
-        loader_cls=PyPDFLoader,   # 1 Document / page
+        loader_cls=PyPDFLoader,  # 1 Document / page
         show_progress=True,
     )
 
@@ -69,9 +72,10 @@ def create_vector_store(chunks, persist_directory: str = DB_PATH):
     """Create and persist Chroma vector store using VoyageAI embeddings."""
     print("\nCreating embeddings and storing in ChromaDB...")
 
-    # VoyageAIEmbeddings sẽ tự dùng VOYAGE_API_KEY từ environment
+    # Lấy API key từ settings, settings đã đọc .env
     embedding_model = VoyageAIEmbeddings(
-        model="voyage-3-lite",  # model nhẹ, hợp lý cho free tier
+        model="voyage-3-lite",
+        api_key=settings.voyage_api_key,
     )
 
     vectorstore = Chroma.from_documents(
@@ -95,6 +99,7 @@ def main(docs_path: str = DOCS_PATH, persist_directory: str = DB_PATH):
 
         embedding_model = VoyageAIEmbeddings(
             model="voyage-3-lite",
+            api_key=settings.voyage_api_key,
         )
 
         vectorstore = Chroma(
@@ -111,7 +116,7 @@ def main(docs_path: str = DOCS_PATH, persist_directory: str = DB_PATH):
     chunks = split_documents(documents)
     vectorstore = create_vector_store(chunks, persist_directory)
 
-    print("\n Ingestion complete! Your documents are now ready for RAG queries.")
+    print("\nIngestion complete! Your documents are now ready for RAG queries.")
     return vectorstore
 
 
