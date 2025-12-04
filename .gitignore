@@ -8,6 +8,7 @@ __pycache__/
 # Virtual env
 .venv/
 env/
+my_env/
 
 # Local databases / vector stores
 db/
