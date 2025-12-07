@@ -2,7 +2,6 @@ import sys
 from pathlib import Path
 from datetime import datetime
 
-# Add project root to sys.path (works both local and Kaggle)
 ROOT_DIR = Path(__file__).resolve().parents[1]
 sys.path.append(str(ROOT_DIR))
 
