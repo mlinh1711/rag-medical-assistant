@@ -1,13 +1,11 @@
 import sys
 from typing import List, Dict
 
-# Thêm repo vào sys.path để import được backend.*
 sys.path.append("/kaggle/working/rag-medical-assistant")
 
 from backend.core.retrieval import get_vectorstore
 
 
-# 10 câu hỏi để test retrieval
 TEST_QUERIES: List[str] = [
     "What is the recommended adult dose of paracetamol?",
     "Which conditions require caution when using paracetamol?",
@@ -21,8 +19,7 @@ TEST_QUERIES: List[str] = [
     "How to treat severe dehydration in children?",
 ]
 
-# Ground truth rất đơn giản: chỉ là vài keyword đặc trưng/định nghĩa
-# Nếu bất kỳ keyword nào xuất hiện trong doc → tính là "hit" cho câu đó
+
 GROUND_TRUTHS: Dict[str, List[str]] = {
     "What is the recommended adult dose of paracetamol?": [
         "adult",
@@ -89,7 +86,6 @@ GROUND_TRUTHS: Dict[str, List[str]] = {
 
 
 def doc_contains_any_keyword(text: str, keywords: List[str]) -> bool:
-    """Kiểm tra doc có chứa ít nhất một keyword (không phân biệt hoa thường)."""
     lower = text.lower()
     return any(kw.lower() in lower for kw in keywords)
 
@@ -113,7 +109,6 @@ def main():
         print(f"QUESTION {idx}: {q}")
         print("=" * 100)
 
-        # Lấy top-k docs + score cho từng câu hỏi
         docs_scores = db.similarity_search_with_score(q, k=TOP_K)
 
         if not docs_scores:
@@ -129,7 +124,6 @@ def main():
             print(f"Source: {src} | Page: {page}")
             print(snippet, "...")
 
-        # Đánh giá hit@k nếu có ground truth cho câu hỏi này
         gt_keywords = GROUND_TRUTHS.get(q)
         if gt_keywords:
             docs_only = [doc for doc, _ in docs_scores]
