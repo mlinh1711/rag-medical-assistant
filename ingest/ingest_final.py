@@ -6,7 +6,6 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_voyageai import VoyageAIEmbeddings
 from langchain_community.vectorstores import Chroma
 
-# dùng chung config .env của backend
 from backend.core.config import settings
 
 
@@ -24,7 +23,7 @@ def load_documents(docs_path: str = DOCS_PATH):
     loader = DirectoryLoader(
         path=docs_path,
         glob="*.pdf",
-        loader_cls=PyPDFLoader,  # 1 Document / page
+        loader_cls=PyPDFLoader,  
         show_progress=True,
     )
 
@@ -69,10 +68,8 @@ def split_documents(documents, chunk_size: int = 1000, chunk_overlap: int = 200)
 
 
 def create_vector_store(chunks, persist_directory: str = DB_PATH):
-    """Create and persist Chroma vector store using VoyageAI embeddings."""
     print("\nCreating embeddings and storing in ChromaDB...")
 
-    # Lấy API key từ settings, settings đã đọc .env
     embedding_model = VoyageAIEmbeddings(
         model="voyage-3-lite",
         api_key=settings.voyage_api_key,
@@ -90,10 +87,8 @@ def create_vector_store(chunks, persist_directory: str = DB_PATH):
 
 
 def main(docs_path: str = DOCS_PATH, persist_directory: str = DB_PATH):
-    """Main ingestion pipeline."""
     print("=== RAG Document Ingestion Pipeline ===\n")
 
-    # Nếu DB đã tồn tại thì load luôn, không ingest lại
     if os.path.exists(persist_directory) and os.listdir(persist_directory):
         print("Vector store already exists. Loading existing store...")
 
