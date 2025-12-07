@@ -9,15 +9,8 @@ def multi_query_retrieve(
     k: int = 5,
     score_threshold: Optional[float] = None,
 ):
-    """
-    Multi-query retrieval:
-    - query: câu hỏi chính
-    - variations: list câu hỏi phụ (paraphrase / mở rộng)
-    - Trả về list Document đã loại trùng theo (source, page)
-    """
     db = get_vectorstore()
 
-    # Tạo retriever giống như trong retrieval.py
     if score_threshold is None:
         retriever = db.as_retriever(
             search_kwargs={"k": k},
@@ -33,16 +26,13 @@ def multi_query_retrieve(
 
     all_docs = []
 
-    # Query chính
     main_docs = retriever.invoke(query)
     all_docs.extend(main_docs)
 
-    # Query phụ
     for q in variations:
         docs = retriever.invoke(q)
         all_docs.extend(docs)
 
-    # Deduplicate theo (source, page)
     unique = {}
     for d in all_docs:
         metadata = d.metadata or {}
