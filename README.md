@@ -118,7 +118,7 @@ http://localhost:8501
 - Source citations  
 - Multi query retrieval  
 
-## 7. Acknowledgements
+## 6. Acknowledgements
 - Deepseek and Voyage  
 - ChromaDB  
 - FastAPI  
