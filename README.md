@@ -118,20 +118,6 @@ http://localhost:8501
 - Source citations  
 - Multi query retrieval  
 
----
-
-## 6. Evaluation Summary
-A gold test set of ten QA pairs was created.  
-Accuracy: X out of 10 correct.  
-(Replace X with your actual result.)
-
-Common error patterns:
-- Missing relevant retrieval chunks  
-- Partial or incomplete answers  
-- Vocabulary mismatch between query and chunk  
-
----
-
 ## 7. Acknowledgements
 - Deepseek and Voyage  
 - ChromaDB  
