@@ -77,7 +77,7 @@ pip install -r requirements.txt
 
 Set keys in `.env`:
 ```
-OPENAI_API_KEY=your_key
+DEEPSEEK_API_KEY=your_key
 VOYAGE_API_KEY=your_key
 ```
 
